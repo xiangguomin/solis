@@ -59,6 +59,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
+    verticalPadding: androidx.compose.ui.unit.Dp = 20.dp,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -75,7 +76,7 @@ fun GlassCard(
             .background(palette.cardBackground)
             .border(1.dp, palette.cardBorder, shape)
             .then(clickableModifier)
-            .padding(20.dp)
+            .padding(horizontal = 20.dp, vertical = verticalPadding)
     ) {
         content()
     }
@@ -335,7 +336,10 @@ fun CalendarAgendaCard(
     modifier: Modifier = Modifier
 ) {
     val palette = LocalSolisPalette.current
-    GlassCard(modifier = modifier) {
+    GlassCard(
+        modifier = modifier,
+        verticalPadding = 14.dp
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -357,7 +361,7 @@ fun CalendarAgendaCard(
                     color = palette.mutedText
                 )
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             if (events.isEmpty()) {
                 Text(
@@ -369,7 +373,7 @@ fun CalendarAgendaCard(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     itemsIndexed(events) { index, event ->
                         Row(
@@ -377,12 +381,12 @@ fun CalendarAgendaCard(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable { onEventClick(event) }
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                                .padding(vertical = 4.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
+                                    .size(9.dp)
                                     .clip(CircleShape)
                                     .background(Color(event.calendarColorHex))
                             )
@@ -390,14 +394,20 @@ fun CalendarAgendaCard(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = event.title,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontSize = 17.sp,
+                                        lineHeight = 20.sp
+                                    ),
                                     color = palette.primaryText,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "${event.dayGroupLabel} • ${event.timeRangeText}",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontSize = 13.sp,
+                                        lineHeight = 17.sp
+                                    ),
                                     color = palette.mutedText
                                 )
                             }
