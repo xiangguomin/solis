@@ -725,6 +725,7 @@ private fun PhotoSelectionDialog(
     onDeleteUnselected: (Set<String>) -> Unit
 ) {
     val palette = LocalSolisPalette.current
+    val context = LocalContext.current
     var selectedIds by remember(photos) {
         mutableStateOf(photos.filter { it.isSelected }.map { it.id }.toSet())
     }
@@ -736,13 +737,13 @@ private fun PhotoSelectionDialog(
         val shape = RoundedCornerShape(28.dp)
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .heightIn(max = 640.dp)
+                .fillMaxWidth(0.90f)
+                .heightIn(max = 650.dp)
                 .clip(shape)
                 .background(palette.modalBackground)
                 .border(1.dp, palette.cardBorder, shape)
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header + Select All / Unselect All / Add from Google Photos
             Row(
@@ -750,18 +751,18 @@ private fun PhotoSelectionDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Manage Slideshow Photos (${selectedIds.size}/${photos.size} selected)",
                         style = MaterialTheme.typography.headlineMedium,
-                        fontSize = 22.sp,
+                        fontSize = 21.sp,
                         color = palette.primaryText
                     )
                     Text(
-                        text = "Tap photos to toggle, or use Select All / Unselect All below.",
+                        text = "💡 Tip for Google Photos Picker: Touch & hold the first photo, then drag down to the bottom edge to auto-scroll & select all at once!",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontSize = 13.sp,
-                        color = palette.mutedText
+                        fontSize = 12.sp,
+                        color = palette.accent
                     )
                 }
 
@@ -785,13 +786,29 @@ private fun PhotoSelectionDialog(
                         Text("☐ Unselect All", fontWeight = FontWeight.SemiBold)
                     }
                     Button(
+                        onClick = {
+                            runCatching {
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.photos")
+                                if (launchIntent != null) {
+                                    context.startActivity(launchIntent)
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.secondaryButtonBg,
+                            contentColor = palette.secondaryButtonText
+                        )
+                    ) {
+                        Text("Google Photos App ↗", fontWeight = FontWeight.SemiBold)
+                    }
+                    Button(
                         onClick = onImportFromGooglePhotos,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = palette.accent,
                             contentColor = if (palette.isLight) Color.White else Color.Black
                         )
                     ) {
-                        Text("+ Add from Google Photos", fontWeight = FontWeight.Bold)
+                        Text("+ Pick Photos", fontWeight = FontWeight.Bold)
                     }
                 }
             }
