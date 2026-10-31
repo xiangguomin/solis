@@ -488,13 +488,13 @@ fun GmailDigestCard(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     if (actionItems.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = "⚡ Action Required & Deadlines",
-                                fontSize = 13.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFF28482)
                             )
@@ -509,10 +509,10 @@ fun GmailDigestCard(
                     }
 
                     if (attentionItems.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = "📌 Things to Know & Pay Attention To",
-                                fontSize = 13.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = palette.accent
                             )
@@ -543,15 +543,15 @@ private fun ExecutiveSummaryBullet(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
-            .padding(vertical = 3.dp, horizontal = 2.dp),
+            .padding(vertical = 4.dp, horizontal = 2.dp),
         verticalAlignment = Alignment.Top
     ) {
         Text(
             text = "•",
-            fontSize = 15.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = bulletColor,
-            modifier = Modifier.padding(end = 8.dp)
+            modifier = Modifier.padding(end = 10.dp)
         )
         Text(
             text = buildAnnotatedString {
@@ -573,8 +573,8 @@ private fun ExecutiveSummaryBullet(
                     append(item.summaryOneLiner)
                 }
             },
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
+            fontSize = 16.sp,
+            lineHeight = 22.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
