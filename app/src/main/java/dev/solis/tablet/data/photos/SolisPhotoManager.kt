@@ -18,10 +18,11 @@ class SolisPhotoManager(private val context: Context) {
     private val sharedAlbumRepo = SharedAlbumPhotoRepository(context)
 
     suspend fun loadFavoritePhotos(
-        sharedAlbumUrl: String = HighlightPhoto.DEFAULT_SHARED_ALBUM_URL
+        sharedAlbumUrl: String = HighlightPhoto.DEFAULT_SHARED_ALBUM_URL,
+        onlySelected: Boolean = true
     ): List<HighlightPhoto> {
         val localStarred = queryStarredMediaStorePhotos()
-        val accountStarred = accountRepo.loadCachedAccountPhotos()
+        val accountStarred = accountRepo.loadCachedAccountPhotos(onlySelected = onlySelected)
         val sharedStarred = if (sharedAlbumUrl.isNotBlank()) {
             sharedAlbumRepo.fetchPhotosFromSharedAlbum(sharedAlbumUrl)
                 .getOrDefault(emptyList())
@@ -36,7 +37,15 @@ class SolisPhotoManager(private val context: Context) {
 
     suspend fun addFavoritePhotosFromPicker(uris: List<Uri>): List<HighlightPhoto> {
         accountRepo.importFromSystemPhotoPicker(uris)
-        return loadFavoritePhotos()
+        return loadFavoritePhotos(onlySelected = false)
+    }
+
+    suspend fun updateSelectedPhotos(selectedIds: Set<String>) {
+        accountRepo.updateSelectedPhotos(selectedIds)
+    }
+
+    suspend fun deleteUnselectedPhotos(keepIds: Set<String>) {
+        accountRepo.deleteUnselectedPhotos(keepIds)
     }
 
     private fun queryStarredMediaStorePhotos(): List<HighlightPhoto> {

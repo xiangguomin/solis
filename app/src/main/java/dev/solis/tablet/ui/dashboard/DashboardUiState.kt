@@ -23,6 +23,7 @@ data class DashboardUiState(
     val pixelShiftOffsetY: Int = 0,
     val currentPhoto: HighlightPhoto = HighlightPhoto.sample(),
     val secondaryPairedPhoto: HighlightPhoto? = null,
+    val allManageablePhotos: List<HighlightPhoto> = emptyList(),
     val currentPhotoIndex: Int = 1,
     val totalPhotosCount: Int = 1,
     val weather: WeatherForecast = WeatherForecast.sample(),

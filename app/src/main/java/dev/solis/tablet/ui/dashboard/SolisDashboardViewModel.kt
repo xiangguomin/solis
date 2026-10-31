@@ -253,7 +253,13 @@ class SolisDashboardViewModel(application: Application) : AndroidViewModel(appli
     fun refreshPhotos(forceReshuffle: Boolean = false) {
         viewModelScope.launch {
             registerInstantPhotosObserver()
-            val loaded = photoManager.loadFavoritePhotos(currentConfig.sharedAlbumUrl)
+            val allPhotos = photoManager.loadFavoritePhotos(
+                sharedAlbumUrl = currentConfig.sharedAlbumUrl,
+                onlySelected = false
+            )
+            _uiState.update { it.copy(allManageablePhotos = allPhotos) }
+
+            val loaded = allPhotos.filter { it.isSelected }
             if (loaded.isEmpty()) return@launch
 
             if (photoPool.isEmpty() || forceReshuffle) {
@@ -366,13 +372,31 @@ class SolisDashboardViewModel(application: Application) : AndroidViewModel(appli
     fun onPhotosPickedFromAccount(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            val updated = photoManager.addFavoritePhotosFromPicker(uris)
-            if (updated.isNotEmpty()) {
-                photoPool = updated
+            val allUpdated = photoManager.addFavoritePhotosFromPicker(uris)
+            _uiState.update { it.copy(allManageablePhotos = allUpdated) }
+            val selected = allUpdated.filter { it.isSelected }
+            if (selected.isNotEmpty()) {
+                photoPool = selected
                 currentPhotoIndex = 0
                 updateCurrentPhotoState()
                 restartPhotoSlideshowLoop()
             }
+        }
+    }
+
+    fun applyPhotoSelection(selectedIds: Set<String>) {
+        viewModelScope.launch {
+            photoManager.updateSelectedPhotos(selectedIds)
+            refreshPhotos(forceReshuffle = true)
+            restartPhotoSlideshowLoop()
+        }
+    }
+
+    fun deleteUnselectedPhotos(keepIds: Set<String>) {
+        viewModelScope.launch {
+            photoManager.deleteUnselectedPhotos(keepIds)
+            refreshPhotos(forceReshuffle = true)
+            restartPhotoSlideshowLoop()
         }
     }
 

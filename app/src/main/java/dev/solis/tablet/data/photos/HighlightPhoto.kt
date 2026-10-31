@@ -6,7 +6,8 @@ data class HighlightPhoto(
     val caption: String?,
     val capturedDateText: String?,
     val locationText: String?,
-    val isPortrait: Boolean = false
+    val isPortrait: Boolean = false,
+    val isSelected: Boolean = true
 ) {
     companion object {
         // Shared album link configured from user request: https://photos.app.goo.gl/58LK2VjMhc6nowMg9

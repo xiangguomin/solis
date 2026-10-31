@@ -33,11 +33,22 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -88,6 +99,7 @@ fun SolisDashboardScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showPhotoSelectionDialog by remember { mutableStateOf(false) }
     var showWeatherDetailModal by remember { mutableStateOf(false) }
     var selectedEmailItem by remember { mutableStateOf<GmailDigestItem?>(null) }
 
@@ -187,7 +199,7 @@ fun SolisDashboardScreen(
             SplitBentoLayout(
                 state = uiState,
                 cropPortraitToFill = uiState.layoutMode == DashboardLayoutMode.FULL_BLEED_OVERLAY,
-                onPickAccountPhotos = launchFavoritesPicker,
+                onPickAccountPhotos = { showPhotoSelectionDialog = true },
                 onPreviousPhoto = { viewModel.previousPhoto() },
                 onNextPhoto = { viewModel.nextPhoto() },
                 onToggleLayout = { viewModel.toggleLayoutMode() },
@@ -215,6 +227,22 @@ fun SolisDashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Black.copy(alpha = 0.65f))
+                )
+            }
+
+            if (showPhotoSelectionDialog) {
+                PhotoSelectionDialog(
+                    photos = uiState.allManageablePhotos,
+                    onDismiss = { showPhotoSelectionDialog = false },
+                    onImportFromGooglePhotos = launchFavoritesPicker,
+                    onApplySelection = { selectedIds ->
+                        showPhotoSelectionDialog = false
+                        viewModel.applyPhotoSelection(selectedIds)
+                    },
+                    onDeleteUnselected = { keepIds ->
+                        showPhotoSelectionDialog = false
+                        viewModel.deleteUnselectedPhotos(keepIds)
+                    }
                 )
             }
 
@@ -685,5 +713,230 @@ private fun ActionPillButton(
             maxLines = 1,
             softWrap = false
         )
+    }
+}
+
+@Composable
+private fun PhotoSelectionDialog(
+    photos: List<HighlightPhoto>,
+    onDismiss: () -> Unit,
+    onImportFromGooglePhotos: () -> Unit,
+    onApplySelection: (Set<String>) -> Unit,
+    onDeleteUnselected: (Set<String>) -> Unit
+) {
+    val palette = LocalSolisPalette.current
+    var selectedIds by remember(photos) {
+        mutableStateOf(photos.filter { it.isSelected }.map { it.id }.toSet())
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        val shape = RoundedCornerShape(28.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .heightIn(max = 640.dp)
+                .clip(shape)
+                .background(palette.modalBackground)
+                .border(1.dp, palette.cardBorder, shape)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header + Select All / Unselect All / Add from Google Photos
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Manage Slideshow Photos (${selectedIds.size}/${photos.size} selected)",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontSize = 22.sp,
+                        color = palette.primaryText
+                    )
+                    Text(
+                        text = "Tap photos to toggle, or use Select All / Unselect All below.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontSize = 13.sp,
+                        color = palette.mutedText
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { selectedIds = photos.map { it.id }.toSet() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.secondaryButtonBg,
+                            contentColor = palette.secondaryButtonText
+                        )
+                    ) {
+                        Text("☑ Select All", fontWeight = FontWeight.SemiBold)
+                    }
+                    Button(
+                        onClick = { selectedIds = emptySet() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.secondaryButtonBg,
+                            contentColor = palette.secondaryButtonText
+                        )
+                    ) {
+                        Text("☐ Unselect All", fontWeight = FontWeight.SemiBold)
+                    }
+                    Button(
+                        onClick = onImportFromGooglePhotos,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.accent,
+                            contentColor = if (palette.isLight) Color.White else Color.Black
+                        )
+                    ) {
+                        Text("+ Add from Google Photos", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            if (photos.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No favorite photos imported yet. Tap '+ Add from Google Photos' to import your Favorites.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.mutedText
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(5),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(photos, key = { it.id }) { photo ->
+                        val isChecked = photo.id in selectedIds
+                        Box(
+                            modifier = Modifier
+                                .height(130.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(
+                                    width = if (isChecked) 3.dp else 1.dp,
+                                    color = if (isChecked) palette.accent else palette.cardBorder,
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                                .clickable {
+                                    selectedIds = if (isChecked) {
+                                        selectedIds - photo.id
+                                    } else {
+                                        selectedIds + photo.id
+                                    }
+                                }
+                        ) {
+                            AsyncImage(
+                                model = photo.imageUrl,
+                                contentDescription = photo.caption,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(alpha = if (isChecked) 1f else 0.42f)
+                            )
+
+                            // Checkbox badge in top-right corner
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isChecked) palette.accent else Color.Black.copy(alpha = 0.6f)
+                                    )
+                                    .border(1.dp, Color.White, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (isChecked) "✓" else "",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (palette.isLight) Color.White else Color.Black
+                                )
+                            }
+
+                            // Date caption at bottom
+                            photo.capturedDateText?.let { dateStr ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.BottomCenter)
+                                        .background(Color.Black.copy(alpha = 0.6f))
+                                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = dateStr.substringBefore("•").trim(),
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Footer buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val unselectedCount = photos.size - selectedIds.size
+                if (unselectedCount > 0 && selectedIds.isNotEmpty()) {
+                    Button(
+                        onClick = { onDeleteUnselected(selectedIds) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF4444).copy(alpha = 0.85f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("🗑 Remove $unselectedCount Unselected")
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.secondaryButtonBg,
+                            contentColor = palette.secondaryButtonText
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            if (selectedIds.isNotEmpty()) {
+                                onApplySelection(selectedIds)
+                            } else {
+                                onDismiss()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.accent,
+                            contentColor = if (palette.isLight) Color.White else Color.Black
+                        )
+                    ) {
+                        Text("Save Selection (${selectedIds.size})", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }

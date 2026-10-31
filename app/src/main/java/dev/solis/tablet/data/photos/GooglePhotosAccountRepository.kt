@@ -43,53 +43,85 @@ class GooglePhotosAccountRepository(
         val caption: String?,
         val capturedDateText: String?,
         val locationText: String?,
-        val isPortrait: Boolean = false
+        val isPortrait: Boolean = false,
+        val isSelected: Boolean = true
     )
 
     /**
      * Loads all locally persisted Google Photos highlights from the tablet's internal storage.
      */
-    suspend fun loadCachedAccountPhotos(): List<HighlightPhoto> = withContext(Dispatchers.IO) {
-        if (!manifestFile.exists()) return@withContext emptyList()
-        runCatching {
-            val entries = json.decodeFromString<List<CachedPhotoEntry>>(manifestFile.readText())
-            var manifestUpdated = false
-            val cleanedEntries = mutableListOf<CachedPhotoEntry>()
+    suspend fun loadCachedAccountPhotos(onlySelected: Boolean = true): List<HighlightPhoto> =
+        withContext(Dispatchers.IO) {
+            if (!manifestFile.exists()) return@withContext emptyList()
+            runCatching {
+                val entries = json.decodeFromString<List<CachedPhotoEntry>>(manifestFile.readText())
+                var manifestUpdated = false
+                val cleanedEntries = mutableListOf<CachedPhotoEntry>()
 
-            val photos = entries.mapNotNull { entry ->
-                val file = File(entry.localFilePath)
-                if (file.exists()) {
-                    val hadFakeLocation = entry.locationText == "San Jose, CA" ||
-                        entry.locationText == "Google Photos"
-                    val resolvedLocation = if (hadFakeLocation) {
-                        manifestUpdated = true
-                        PhotoMetadataExtractor.extractFromFile(context, file).locationCityState
-                    } else {
-                        entry.locationText
-                    }
-                    val updatedEntry = if (hadFakeLocation) {
-                        entry.copy(locationText = resolvedLocation)
-                    } else {
-                        entry
-                    }
-                    cleanedEntries.add(updatedEntry)
+                val photos = entries.mapNotNull { entry ->
+                    val file = File(entry.localFilePath)
+                    if (file.exists()) {
+                        val hadFakeLocation = entry.locationText == "San Jose, CA" ||
+                            entry.locationText == "Google Photos"
+                        val resolvedLocation = if (hadFakeLocation) {
+                            manifestUpdated = true
+                            PhotoMetadataExtractor.extractFromFile(context, file).locationCityState
+                        } else {
+                            entry.locationText
+                        }
+                        val updatedEntry = if (hadFakeLocation) {
+                            entry.copy(locationText = resolvedLocation)
+                        } else {
+                            entry
+                        }
+                        cleanedEntries.add(updatedEntry)
 
-                    HighlightPhoto(
-                        id = updatedEntry.id,
-                        imageUrl = file.toURI().toString(),
-                        caption = updatedEntry.caption,
-                        capturedDateText = updatedEntry.capturedDateText,
-                        locationText = updatedEntry.locationText,
-                        isPortrait = updatedEntry.isPortrait
-                    )
-                } else null
+                        if (onlySelected && !updatedEntry.isSelected) {
+                            null
+                        } else {
+                            HighlightPhoto(
+                                id = updatedEntry.id,
+                                imageUrl = file.toURI().toString(),
+                                caption = updatedEntry.caption,
+                                capturedDateText = updatedEntry.capturedDateText,
+                                locationText = updatedEntry.locationText,
+                                isPortrait = updatedEntry.isPortrait,
+                                isSelected = updatedEntry.isSelected
+                            )
+                        }
+                    } else null
+                }
+
+                if (manifestUpdated) {
+                    saveManifestEntries(cleanedEntries)
+                }
+                photos
+            }.getOrDefault(emptyList())
+        }
+
+    /**
+     * Updates which cached photos are selected/enabled for the slideshow (supports Select All / Unselect All).
+     */
+    suspend fun updateSelectedPhotos(selectedIds: Set<String>) = withContext(Dispatchers.IO) {
+        val entries = loadManifestEntries()
+        val updated = entries.map { it.copy(isSelected = it.id in selectedIds) }
+        saveManifestEntries(updated)
+    }
+
+    /**
+     * Permanently deletes unselected photos from local cache storage when the user chooses to remove them.
+     */
+    suspend fun deleteUnselectedPhotos(keepIds: Set<String>) = withContext(Dispatchers.IO) {
+        val entries = loadManifestEntries()
+        val remaining = mutableListOf<CachedPhotoEntry>()
+        for (entry in entries) {
+            if (entry.id in keepIds) {
+                remaining.add(entry.copy(isSelected = true))
+            } else {
+                runCatching { File(entry.localFilePath).delete() }
             }
-
-            if (manifestUpdated) {
-                saveManifestEntries(cleanedEntries)
-            }
-            photos
-        }.getOrDefault(emptyList())
+        }
+        saveManifestEntries(remaining)
     }
 
     /**
