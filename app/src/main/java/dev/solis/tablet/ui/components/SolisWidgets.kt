@@ -35,12 +35,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import dev.solis.tablet.data.calendar.CalendarEvent
+import dev.solis.tablet.data.gmail.DigestCategory
 import dev.solis.tablet.data.gmail.GmailDigestItem
 import dev.solis.tablet.data.weather.WeatherForecast
 import dev.solis.tablet.ui.theme.LocalSolisPalette
@@ -416,6 +420,13 @@ fun GmailDigestCard(
     modifier: Modifier = Modifier
 ) {
     val palette = LocalSolisPalette.current
+    val actionItems = remember(digestItems) {
+        digestItems.filter { it.category == DigestCategory.ACTION_REQUIRED }
+    }
+    val attentionItems = remember(digestItems) {
+        digestItems.filter { it.category != DigestCategory.ACTION_REQUIRED }
+    }
+
     GlassCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -424,7 +435,7 @@ fun GmailDigestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "IMPORTANT GMAIL BRIEF (${digestItems.size})",
+                    text = "IMPORTANT GMAIL BRIEF",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,
@@ -473,53 +484,43 @@ fun GmailDigestCard(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(digestItems) { index, item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onEmailClick(item) }
-                                .padding(vertical = 7.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(item.category.colorHex).copy(alpha = 0.22f))
-                                    .border(
-                                        1.dp,
-                                        Color(item.category.colorHex).copy(alpha = 0.6f),
-                                        RoundedCornerShape(6.dp)
-                                    )
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = item.category.badgeLabel,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(item.category.colorHex)
+                    if (actionItems.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "⚡ Action Required & Deadlines",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF28482)
+                            )
+                            actionItems.forEach { item ->
+                                ExecutiveSummaryBullet(
+                                    item = item,
+                                    bulletColor = Color(0xFFF28482),
+                                    onClick = { onEmailClick(item) }
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.senderName,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = palette.primaryText,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = item.summaryOneLiner,
-                                    fontSize = 13.sp,
-                                    color = palette.secondaryText,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                        }
+                    }
+
+                    if (attentionItems.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "📌 Things to Know & Pay Attention To",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = palette.accent
+                            )
+                            attentionItems.forEach { item ->
+                                ExecutiveSummaryBullet(
+                                    item = item,
+                                    bulletColor = palette.accent,
+                                    onClick = { onEmailClick(item) }
                                 )
                             }
                         }
@@ -527,6 +528,57 @@ fun GmailDigestCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ExecutiveSummaryBullet(
+    item: GmailDigestItem,
+    bulletColor: Color,
+    onClick: () -> Unit
+) {
+    val palette = LocalSolisPalette.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 3.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = "•",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = bulletColor,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            text = buildAnnotatedString {
+                withStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.SemiBold,
+                        color = palette.primaryText
+                    )
+                ) {
+                    append(item.senderName)
+                    append(": ")
+                }
+                withStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.Normal,
+                        color = palette.secondaryText
+                    )
+                ) {
+                    append(item.summaryOneLiner)
+                }
+            },
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

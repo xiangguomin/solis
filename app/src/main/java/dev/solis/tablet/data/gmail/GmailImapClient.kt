@@ -195,32 +195,6 @@ class GmailImapClient {
                 }
             }.trim()
 
-            // Create a concise 1-liner for the dashboard card (under ~85 chars)
-            val shortTopic = cleanTitle
-                .substringBefore("(")
-                .substringBefore("TOMORROW")
-                .substringBefore("2026")
-                .trim()
-                .take(28)
-
-            val firstSubSummary = currentSubBullets.firstOrNull()
-                ?.let { sub ->
-                    // Extract the bold/lead phrase + key time/deadline
-                    val lead = sub.substringBefore(":").trim()
-                    val detail = sub.substringAfter(":", "").trim()
-                    if (detail.isNotEmpty()) "$lead: ${detail.take(75)}" else lead
-                }
-                ?: cleanTitle
-
-            val parenthesizedHint = Regex("""\(([^)]+)\)""").find(cleanTitle)?.groupValues?.get(1)
-            val conciseOneLiner = if (!parenthesizedHint.isNullOrBlank() && !firstSubSummary.contains(parenthesizedHint)) {
-                "[$parenthesizedHint] $firstSubSummary"
-            } else {
-                firstSubSummary
-            }
-
-            val combinedForCategory = "$cleanTitle $firstSubSummary"
-
             // Skip bank/credit card statements, bills, and payment notifications
             if (isFinancialOrStatementItem(cleanTitle, fullDetails)) {
                 currentTitle = ""
@@ -228,22 +202,44 @@ class GmailImapClient {
                 return
             }
 
+            // Build a natural executive-summary sentence for this point
+            val cleanTopic = cleanTitle
+                .replace(Regex("""\s*\([^)]*\)\s*"""), " ")
+                .replace("  ", " ")
+                .trim()
+
+            val parenthesizedHint = Regex("""\(([^)]+)\)""").find(cleanTitle)?.groupValues?.get(1)
+            val topicWithHint = if (!parenthesizedHint.isNullOrBlank()) {
+                "$cleanTopic ($parenthesizedHint)"
+            } else {
+                cleanTopic
+            }
+
+            val summaryPoints = if (currentSubBullets.isNotEmpty()) {
+                currentSubBullets.joinToString(" • ") { sub ->
+                    sub.replace(Regex("""https?://\S+"""), "").trim().trimEnd('-', ':', ' ')
+                }
+            } else {
+                cleanTitle
+            }
+
             val category = when {
-                "Delivery" in combinedForCategory || "Package" in combinedForCategory || "Amazon" in combinedForCategory ->
-                    DigestCategory.DELIVERY
                 isActionSection -> DigestCategory.ACTION_REQUIRED
-                else -> GmailDigestRepository.inferCategory(combinedForCategory)
+                "Delivery" in "$cleanTitle $summaryPoints" ||
+                    "Package" in "$cleanTitle $summaryPoints" ||
+                    "Amazon" in "$cleanTitle $summaryPoints" -> DigestCategory.DELIVERY
+                else -> DigestCategory.PERSONAL
             }
 
             results.add(
                 GmailDigestItem(
                     threadId = "$uid-${ if (isActionSection) "act" else "sec" }-${results.size}",
                     category = category,
-                    senderName = shortTopic.ifEmpty { "Daily Brief" },
-                    summaryOneLiner = conciseOneLiner,
+                    senderName = topicWithHint.ifEmpty { "Update" },
+                    summaryOneLiner = summaryPoints,
                     receivedTimeText = dateLabel,
                     subject = cleanTitle,
-                    senderEmail = "Spark Daily Email Digest",
+                    senderEmail = "Daily Email Digest",
                     fullBodySnippet = fullDetails
                 )
             )
