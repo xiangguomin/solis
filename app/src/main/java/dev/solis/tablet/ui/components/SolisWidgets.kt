@@ -381,7 +381,7 @@ fun CalendarAgendaCard(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable { onEventClick(event) }
-                                .padding(vertical = 4.dp, horizontal = 4.dp),
+                                .padding(vertical = 3.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
