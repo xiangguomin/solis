@@ -613,10 +613,10 @@ private fun BottomActionPillBar(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 ActionPillButton(
-                    label = "★ Pick Favorites",
+                    label = "★ Favorites",
                     textColor = SolisGold,
                     onClick = {
                         onWakeControls()
@@ -638,7 +638,7 @@ private fun BottomActionPillBar(
                     }
                 )
                 ActionPillButton(
-                    label = if (cropPortraitToFill) "Fit Photo" else "Fill Photo",
+                    label = if (cropPortraitToFill) "Fit" else "Fill",
                     onClick = {
                         onWakeControls()
                         onToggleLayout()
@@ -675,13 +675,15 @@ private fun ActionPillButton(
             .background(SolisGlassCard)
             .border(1.dp, SolisGlassBorder, RoundedCornerShape(50))
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = textColor
+            color = textColor,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
