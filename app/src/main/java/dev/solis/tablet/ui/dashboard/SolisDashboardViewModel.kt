@@ -180,6 +180,7 @@ class SolisDashboardViewModel(application: Application) : AndroidViewModel(appli
                 _uiState.update {
                     it.copy(
                         layoutMode = config.layoutMode,
+                        isLightMode = config.isLightMode,
                         config = config,
                         batteryPercent = readBatteryPercent()
                     )
@@ -428,6 +429,12 @@ class SolisDashboardViewModel(application: Application) : AndroidViewModel(appli
                 DashboardLayoutMode.FULL_BLEED_OVERLAY
             }
             prefsRepo.setLayoutMode(next)
+        }
+    }
+
+    fun toggleThemeMode() {
+        viewModelScope.launch {
+            prefsRepo.setLightMode(!_uiState.value.isLightMode)
         }
     }
 

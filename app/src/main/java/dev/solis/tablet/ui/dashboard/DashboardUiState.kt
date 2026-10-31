@@ -14,6 +14,7 @@ enum class DashboardLayoutMode {
 
 data class DashboardUiState(
     val layoutMode: DashboardLayoutMode = DashboardLayoutMode.FULL_BLEED_OVERLAY,
+    val isLightMode: Boolean = false,
     val isNightDimmed: Boolean = false,
     val isSyncing: Boolean = false,
     val hasCalendarPermission: Boolean = false,

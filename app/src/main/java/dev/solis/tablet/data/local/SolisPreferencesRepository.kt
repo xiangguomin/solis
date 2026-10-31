@@ -1,6 +1,7 @@
 package dev.solis.tablet.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -15,6 +16,7 @@ private val Context.solisDataStore by preferencesDataStore(name = "solis_prefere
 
 data class SolisConfig(
     val layoutMode: DashboardLayoutMode = DashboardLayoutMode.FULL_BLEED_OVERLAY,
+    val isLightMode: Boolean = false,
     val sharedAlbumUrl: String = HighlightPhoto.DEFAULT_SHARED_ALBUM_URL,
     val photoIntervalSeconds: Int = 60,
     val locationName: String = "San Jose, CA",
@@ -30,6 +32,7 @@ class SolisPreferencesRepository(private val context: Context) {
 
     private object Keys {
         val LAYOUT_MODE = stringPreferencesKey("layout_mode")
+        val IS_LIGHT_MODE = booleanPreferencesKey("is_light_mode")
         val SHARED_ALBUM_URL = stringPreferencesKey("shared_album_url")
         val PHOTO_INTERVAL_SEC = intPreferencesKey("photo_interval_sec")
         val LOCATION_NAME = stringPreferencesKey("location_name")
@@ -48,6 +51,7 @@ class SolisPreferencesRepository(private val context: Context) {
 
         SolisConfig(
             layoutMode = layoutMode,
+            isLightMode = prefs[Keys.IS_LIGHT_MODE] ?: false,
             sharedAlbumUrl = prefs[Keys.SHARED_ALBUM_URL] ?: HighlightPhoto.DEFAULT_SHARED_ALBUM_URL,
             photoIntervalSeconds = prefs[Keys.PHOTO_INTERVAL_SEC] ?: 60,
             locationName = prefs[Keys.LOCATION_NAME] ?: "San Jose, CA",
@@ -62,6 +66,10 @@ class SolisPreferencesRepository(private val context: Context) {
 
     suspend fun setLayoutMode(mode: DashboardLayoutMode) {
         context.solisDataStore.edit { it[Keys.LAYOUT_MODE] = mode.name }
+    }
+
+    suspend fun setLightMode(isLight: Boolean) {
+        context.solisDataStore.edit { it[Keys.IS_LIGHT_MODE] = isLight }
     }
 
     suspend fun updateSettings(

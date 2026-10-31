@@ -74,10 +74,12 @@ import dev.solis.tablet.ui.components.GmailDigestCard
 import dev.solis.tablet.ui.components.SolisSettingsDialog
 import dev.solis.tablet.ui.components.WeatherDetailModal
 import dev.solis.tablet.ui.components.WeatherWidgetCard
+import dev.solis.tablet.ui.theme.LocalSolisPalette
 import dev.solis.tablet.ui.theme.SolisGlassBorder
 import dev.solis.tablet.ui.theme.SolisGlassCard
 import dev.solis.tablet.ui.theme.SolisGold
 import dev.solis.tablet.ui.theme.SolisSurfaceDark
+import dev.solis.tablet.ui.theme.SolisTheme
 
 @Composable
 fun SolisDashboardScreen(
@@ -158,107 +160,112 @@ fun SolisDashboardScreen(
     // Swipe Right (drag > +80px) -> Previous Favorite Photo
     var totalHorizontalDrag by remember { mutableFloatStateOf(0f) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SolisSurfaceDark)
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { totalHorizontalDrag = 0f },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        totalHorizontalDrag += dragAmount
-                    },
-                    onDragEnd = {
-                        when {
-                            totalHorizontalDrag < -80f -> viewModel.nextPhoto()
-                            totalHorizontalDrag > 80f -> viewModel.previousPhoto()
+    SolisTheme(isLightMode = uiState.isLightMode) {
+        val palette = LocalSolisPalette.current
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(palette.background)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { totalHorizontalDrag = 0f },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            totalHorizontalDrag += dragAmount
+                        },
+                        onDragEnd = {
+                            when {
+                                totalHorizontalDrag < -80f -> viewModel.nextPhoto()
+                                totalHorizontalDrag > 80f -> viewModel.previousPhoto()
+                            }
+                            totalHorizontalDrag = 0f
                         }
-                        totalHorizontalDrag = 0f
+                    )
+                }
+        ) {
+            SplitBentoLayout(
+                state = uiState,
+                cropPortraitToFill = uiState.layoutMode == DashboardLayoutMode.FULL_BLEED_OVERLAY,
+                onPickAccountPhotos = launchFavoritesPicker,
+                onPreviousPhoto = { viewModel.previousPhoto() },
+                onNextPhoto = { viewModel.nextPhoto() },
+                onToggleLayout = { viewModel.toggleLayoutMode() },
+                onToggleTheme = { viewModel.toggleThemeMode() },
+                onOpenSettings = { showSettingsDialog = true },
+                onWeatherClick = { showWeatherDetailModal = true },
+                onCalendarEventClick = { event ->
+                    openGoogleCalendarWeeklyView(context, event.startTimeMillis)
+                },
+                onCalendarHeaderClick = {
+                    openGoogleCalendarWeeklyView(context, System.currentTimeMillis())
+                },
+                onAuthorizeGmailClick = {
+                    showSettingsDialog = true
+                },
+                onOpenGmailAppClick = {
+                    openGmailThreadOrApp(context, null)
+                },
+                onEmailClick = { item -> selectedEmailItem = item }
+            )
+
+            // Night-time auto dimming overlay (11 PM - 6 AM)
+            if (uiState.isNightDimmed) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.65f))
+                )
+            }
+
+            if (showWeatherDetailModal) {
+                WeatherDetailModal(
+                    weather = uiState.weather,
+                    onDismiss = { showWeatherDetailModal = false },
+                    onOpenTabletWeatherApp = {
+                        showWeatherDetailModal = false
+                        openTabletWeatherDetailsApp(context, uiState.weather.locationName)
                     }
                 )
             }
-    ) {
-        SplitBentoLayout(
-            state = uiState,
-            cropPortraitToFill = uiState.layoutMode == DashboardLayoutMode.FULL_BLEED_OVERLAY,
-            onPickAccountPhotos = launchFavoritesPicker,
-            onPreviousPhoto = { viewModel.previousPhoto() },
-            onNextPhoto = { viewModel.nextPhoto() },
-            onToggleLayout = { viewModel.toggleLayoutMode() },
-            onOpenSettings = { showSettingsDialog = true },
-            onWeatherClick = { showWeatherDetailModal = true },
-            onCalendarEventClick = { event ->
-                openGoogleCalendarWeeklyView(context, event.startTimeMillis)
-            },
-            onCalendarHeaderClick = {
-                openGoogleCalendarWeeklyView(context, System.currentTimeMillis())
-            },
-            onAuthorizeGmailClick = {
-                showSettingsDialog = true
-            },
-            onOpenGmailAppClick = {
-                openGmailThreadOrApp(context, null)
-            },
-            onEmailClick = { item -> selectedEmailItem = item }
-        )
 
-        // Night-time auto dimming overlay (11 PM - 6 AM)
-        if (uiState.isNightDimmed) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.65f))
-            )
-        }
+            selectedEmailItem?.let { emailItem ->
+                GmailDetailModal(
+                    item = emailItem,
+                    onDismiss = { selectedEmailItem = null },
+                    onOpenInGmailApp = { item ->
+                        selectedEmailItem = null
+                        openGmailThreadOrApp(context, item)
+                    }
+                )
+            }
 
-        if (showWeatherDetailModal) {
-            WeatherDetailModal(
-                weather = uiState.weather,
-                onDismiss = { showWeatherDetailModal = false },
-                onOpenTabletWeatherApp = {
-                    showWeatherDetailModal = false
-                    openTabletWeatherDetailsApp(context, uiState.weather.locationName)
-                }
-            )
-        }
-
-        selectedEmailItem?.let { emailItem ->
-            GmailDetailModal(
-                item = emailItem,
-                onDismiss = { selectedEmailItem = null },
-                onOpenInGmailApp = { item ->
-                    selectedEmailItem = null
-                    openGmailThreadOrApp(context, item)
-                }
-            )
-        }
-
-        if (showSettingsDialog) {
-            SolisSettingsDialog(
-                currentConfig = uiState.config,
-                onDismiss = { showSettingsDialog = false },
-                onPickAccountPhotos = launchFavoritesPicker,
-                onRequestCalendarPermission = {
-                    permissionsLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_CALENDAR,
-                            Manifest.permission.READ_MEDIA_IMAGES
+            if (showSettingsDialog) {
+                SolisSettingsDialog(
+                    currentConfig = uiState.config,
+                    onDismiss = { showSettingsDialog = false },
+                    onPickAccountPhotos = launchFavoritesPicker,
+                    onRequestCalendarPermission = {
+                        permissionsLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.READ_CALENDAR,
+                                Manifest.permission.READ_MEDIA_IMAGES
+                            )
                         )
-                    )
-                },
-                onSave = { albumUrl, interval, locName, lat, lon, geminiKey, gmailToken ->
-                    viewModel.saveSettings(
-                        sharedAlbumUrl = albumUrl,
-                        photoIntervalSeconds = interval,
-                        locationName = locName,
-                        latitude = lat,
-                        longitude = lon,
-                        geminiApiKey = geminiKey,
-                        gmailOAuthToken = gmailToken
-                    )
-                }
-            )
+                    },
+                    onSave = { albumUrl, interval, locName, lat, lon, geminiKey, gmailToken ->
+                        viewModel.saveSettings(
+                            sharedAlbumUrl = albumUrl,
+                            photoIntervalSeconds = interval,
+                            locationName = locName,
+                            latitude = lat,
+                            longitude = lon,
+                            geminiApiKey = geminiKey,
+                            gmailOAuthToken = gmailToken
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -347,6 +354,7 @@ private fun SplitBentoLayout(
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
     onToggleLayout: () -> Unit,
+    onToggleTheme: () -> Unit,
     onOpenSettings: () -> Unit,
     onWeatherClick: () -> Unit,
     onCalendarEventClick: (CalendarEvent) -> Unit,
@@ -355,6 +363,7 @@ private fun SplitBentoLayout(
     onOpenGmailAppClick: () -> Unit,
     onEmailClick: (GmailDigestItem) -> Unit
 ) {
+    val palette = LocalSolisPalette.current
     var controlsWakeTick by remember { mutableIntStateOf(0) }
     var showControls by remember { mutableStateOf(true) }
 
@@ -367,7 +376,7 @@ private fun SplitBentoLayout(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(SolisSurfaceDark)
+            .background(palette.background)
             .padding(24.dp)
             .offset { IntOffset(state.pixelShiftOffsetX, state.pixelShiftOffsetY) },
         horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -404,7 +413,7 @@ private fun SplitBentoLayout(
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(24.dp))
-                    .border(1.dp, SolisGlassBorder, RoundedCornerShape(24.dp))
+                    .border(1.dp, palette.cardBorder, RoundedCornerShape(24.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -443,6 +452,7 @@ private fun SplitBentoLayout(
                         onPreviousPhoto = onPreviousPhoto,
                         onNextPhoto = onNextPhoto,
                         onToggleLayout = onToggleLayout,
+                        onToggleTheme = onToggleTheme,
                         onOpenSettings = onOpenSettings,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -568,6 +578,7 @@ private fun BottomActionPillBar(
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
     onToggleLayout: () -> Unit,
+    onToggleTheme: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -602,7 +613,7 @@ private fun BottomActionPillBar(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ActionPillButton(
                     label = "★ Pick Favorites",
@@ -631,6 +642,13 @@ private fun BottomActionPillBar(
                     onClick = {
                         onWakeControls()
                         onToggleLayout()
+                    }
+                )
+                ActionPillButton(
+                    label = if (state.isLightMode) "🌙 Dark" else "☀️ Light",
+                    onClick = {
+                        onWakeControls()
+                        onToggleTheme()
                     }
                 )
                 ActionPillButton(
