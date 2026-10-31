@@ -448,8 +448,8 @@ private fun SplitBentoLayout(
         }
 
         // Right 46%:
-        // 1. Top (36%): Compact Scrollable Upcoming Schedule (fits 4 events cleanly)
-        // 2. Bottom (64%): Dedicated Single-Photo Frame aligned with the bottom of the Gmail Brief!
+        // 1. Top (32%): Compact Scrollable Upcoming Schedule (fits 4 events cleanly)
+        // 2. Bottom (68%): Dedicated Single-Photo Frame aligned with the bottom of the Gmail Brief!
         Column(
             modifier = Modifier
                 .weight(0.46f)
@@ -462,13 +462,13 @@ private fun SplitBentoLayout(
                 onCardHeaderClick = onCalendarHeaderClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.36f)
+                    .weight(0.32f)
             )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.64f)
+                    .weight(0.68f)
                     .clip(RoundedCornerShape(24.dp))
                     .border(1.dp, palette.cardBorder, RoundedCornerShape(24.dp))
                     .clickable(
