@@ -131,39 +131,54 @@ class GooglePhotosAccountRepository(
     suspend fun importFromSystemPhotoPicker(uris: List<Uri>): List<HighlightPhoto> =
         withContext(Dispatchers.IO) {
             val existing = loadManifestEntries().toMutableList()
+            val newlyImported = mutableListOf<CachedPhotoEntry>()
 
-            uris.forEachIndexed { idx, uri ->
+            uris.forEach { uri ->
                 runCatching {
                     val id = "acct-${UUID.randomUUID().toString().take(8)}"
                     val destFile = File(localHighlightsDir, "$id.jpg")
-                    // Request original unredacted bytes when possible so EXIF GPS is preserved
-                    val sourceUri = runCatching {
-                        android.provider.MediaStore.setRequireOriginal(uri)
-                    }.getOrDefault(uri)
 
-                    context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    // Only use MediaStore.setRequireOriginal for MediaStore ("media") authority URIs;
+                    // Google Photos contentprovider URIs already point to /ORIGINAL/ and modifying
+                    // their query string invalidates Android's per-URI ClipData permission grant.
+                    val inputStream = if (uri.authority == android.provider.MediaStore.AUTHORITY) {
+                        runCatching {
+                            context.contentResolver.openInputStream(
+                                android.provider.MediaStore.setRequireOriginal(uri)
+                            )
+                        }.getOrNull() ?: context.contentResolver.openInputStream(uri)
+                    } else {
+                        context.contentResolver.openInputStream(uri)
+                    }
+
+                    inputStream?.use { input ->
                         destFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
                     }
                     if (destFile.exists() && destFile.length() > 0) {
                         val meta = PhotoMetadataExtractor.extractFromFile(context, destFile)
-                        existing.add(
+                        newlyImported.add(
                             CachedPhotoEntry(
                                 id = id,
                                 localFilePath = destFile.absolutePath,
                                 caption = "★ Favorite",
                                 capturedDateText = meta.takenTimeText ?: "Unknown Date",
                                 locationText = meta.locationCityState,
-                                isPortrait = meta.isPortrait
+                                isPortrait = meta.isPortrait,
+                                isSelected = true
                             )
                         )
+                    } else {
+                        runCatching { destFile.delete() }
                     }
                 }
             }
 
-            saveManifestEntries(existing)
-            loadCachedAccountPhotos()
+            // Prepend newly imported photos at the top so they appear first in Manage Slideshow Photos
+            val combined = newlyImported + existing
+            saveManifestEntries(combined)
+            loadCachedAccountPhotos(onlySelected = false)
         }
 
     /**

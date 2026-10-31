@@ -372,8 +372,18 @@ class SolisDashboardViewModel(application: Application) : AndroidViewModel(appli
     fun onPhotosPickedFromAccount(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
+            val prevCount = _uiState.value.allManageablePhotos.size
+            _uiState.update {
+                it.copy(photoImportStatus = "⏳ Importing ${uris.size} photo(s) from Google Photos...")
+            }
             val allUpdated = photoManager.addFavoritePhotosFromPicker(uris)
-            _uiState.update { it.copy(allManageablePhotos = allUpdated) }
+            val addedCount = (allUpdated.size - prevCount).coerceAtLeast(0)
+            _uiState.update {
+                it.copy(
+                    allManageablePhotos = allUpdated,
+                    photoImportStatus = "✓ Imported $addedCount new photo(s) from Google Photos!"
+                )
+            }
             val selected = allUpdated.filter { it.isSelected }
             if (selected.isNotEmpty()) {
                 photoPool = selected

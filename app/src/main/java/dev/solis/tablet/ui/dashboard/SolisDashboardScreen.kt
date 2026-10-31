@@ -233,6 +233,7 @@ fun SolisDashboardScreen(
             if (showPhotoSelectionDialog) {
                 PhotoSelectionDialog(
                     photos = uiState.allManageablePhotos,
+                    importStatus = uiState.photoImportStatus,
                     onDismiss = { showPhotoSelectionDialog = false },
                     onImportFromGooglePhotos = launchFavoritesPicker,
                     onApplySelection = { selectedIds ->
@@ -719,6 +720,7 @@ private fun ActionPillButton(
 @Composable
 private fun PhotoSelectionDialog(
     photos: List<HighlightPhoto>,
+    importStatus: String?,
     onDismiss: () -> Unit,
     onImportFromGooglePhotos: () -> Unit,
     onApplySelection: (Set<String>) -> Unit,
@@ -759,7 +761,8 @@ private fun PhotoSelectionDialog(
                         color = palette.primaryText
                     )
                     Text(
-                        text = "💡 Tip for Google Photos Picker: Touch & hold the first photo, then drag down to the bottom edge to auto-scroll & select all at once!",
+                        text = importStatus
+                            ?: "💡 Tip for Google Photos Picker: Touch & hold the first photo, then drag down to the bottom edge to auto-scroll & select all at once!",
                         style = MaterialTheme.typography.bodyMedium,
                         fontSize = 12.sp,
                         color = palette.accent

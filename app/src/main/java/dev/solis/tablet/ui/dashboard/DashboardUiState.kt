@@ -24,6 +24,7 @@ data class DashboardUiState(
     val currentPhoto: HighlightPhoto = HighlightPhoto.sample(),
     val secondaryPairedPhoto: HighlightPhoto? = null,
     val allManageablePhotos: List<HighlightPhoto> = emptyList(),
+    val photoImportStatus: String? = null,
     val currentPhotoIndex: Int = 1,
     val totalPhotosCount: Int = 1,
     val weather: WeatherForecast = WeatherForecast.sample(),

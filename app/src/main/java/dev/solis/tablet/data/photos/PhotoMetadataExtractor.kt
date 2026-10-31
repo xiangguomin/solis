@@ -64,14 +64,20 @@ object PhotoMetadataExtractor {
         dateTakenMillis: Long
     ): ExtractedMetadata {
         return runCatching {
-            // Require original URI via MediaStore.setRequireOriginal so GPS tags are preserved
-            val originalUri = runCatching { MediaStore.setRequireOriginal(imageUri) }
-                .getOrDefault(imageUri)
+            // Require original URI via MediaStore.setRequireOriginal only on MediaStore URIs
+            val originalUri = if (imageUri.authority == MediaStore.AUTHORITY) {
+                runCatching { MediaStore.setRequireOriginal(imageUri) }.getOrDefault(imageUri)
+            } else {
+                imageUri
+            }
 
             var rawWidth = 0
             var rawHeight = 0
             runCatching {
-                context.contentResolver.openInputStream(originalUri)?.use { boundsStream ->
+                val boundsInput = runCatching {
+                    context.contentResolver.openInputStream(originalUri)
+                }.getOrNull() ?: context.contentResolver.openInputStream(imageUri)
+                boundsInput?.use { boundsStream ->
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeStream(boundsStream, null, bounds)
                     rawWidth = bounds.outWidth
@@ -79,7 +85,11 @@ object PhotoMetadataExtractor {
                 }
             }
 
-            context.contentResolver.openInputStream(originalUri)?.use { stream ->
+            val exifInput = runCatching {
+                context.contentResolver.openInputStream(originalUri)
+            }.getOrNull() ?: context.contentResolver.openInputStream(imageUri)
+
+            exifInput?.use { stream ->
                 val exif = ExifInterface(stream)
                 parseExif(
                     context = context,
