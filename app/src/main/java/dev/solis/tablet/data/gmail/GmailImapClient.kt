@@ -202,32 +202,43 @@ class GmailImapClient {
                 return
             }
 
-            // Build a natural executive-summary sentence for this point
+            // Build a short, punchy 1-line takeaway (keep full details in fullBodySnippet for tap modal)
             val cleanTopic = cleanTitle
                 .replace(Regex("""\s*\([^)]*\)\s*"""), " ")
                 .replace("  ", " ")
                 .trim()
+                .take(32)
 
             val parenthesizedHint = Regex("""\(([^)]+)\)""").find(cleanTitle)?.groupValues?.get(1)
-            val topicWithHint = if (!parenthesizedHint.isNullOrBlank()) {
+            val topicWithHint = if (!parenthesizedHint.isNullOrBlank() && parenthesizedHint.length <= 18) {
                 "$cleanTopic ($parenthesizedHint)"
             } else {
                 cleanTopic
             }
 
-            val summaryPoints = if (currentSubBullets.isNotEmpty()) {
-                currentSubBullets.joinToString(" • ") { sub ->
-                    sub.replace(Regex("""https?://\S+"""), "").trim().trimEnd('-', ':', ' ')
+            // Take ONLY the first sub-bullet's core point so it's never a wall of text
+            val conciseTakeaway = currentSubBullets.firstOrNull()
+                ?.replace(Regex("""https?://\S+"""), "")
+                ?.replace(Regex("""\s+"""), " ")
+                ?.trim()
+                ?.trimEnd('-', ':', ' ')
+                ?.let { firstSub ->
+                    // Strip redundant lead label if it repeats the topic
+                    val afterColon = firstSub.substringAfter(": ", "")
+                    val core = if (afterColon.isNotEmpty() && firstSub.substringBefore(": ").length < 28) {
+                        firstSub
+                    } else {
+                        firstSub
+                    }
+                    if (core.length > 95) core.take(92).trimEnd() + "…" else core
                 }
-            } else {
-                cleanTitle
-            }
+                ?: cleanTitle
 
             val category = when {
                 isActionSection -> DigestCategory.ACTION_REQUIRED
-                "Delivery" in "$cleanTitle $summaryPoints" ||
-                    "Package" in "$cleanTitle $summaryPoints" ||
-                    "Amazon" in "$cleanTitle $summaryPoints" -> DigestCategory.DELIVERY
+                "Delivery" in "$cleanTitle $conciseTakeaway" ||
+                    "Package" in "$cleanTitle $conciseTakeaway" ||
+                    "Amazon" in "$cleanTitle $conciseTakeaway" -> DigestCategory.DELIVERY
                 else -> DigestCategory.PERSONAL
             }
 
@@ -236,7 +247,7 @@ class GmailImapClient {
                     threadId = "$uid-${ if (isActionSection) "act" else "sec" }-${results.size}",
                     category = category,
                     senderName = topicWithHint.ifEmpty { "Update" },
-                    summaryOneLiner = summaryPoints,
+                    summaryOneLiner = conciseTakeaway,
                     receivedTimeText = dateLabel,
                     subject = cleanTitle,
                     senderEmail = "Daily Email Digest",

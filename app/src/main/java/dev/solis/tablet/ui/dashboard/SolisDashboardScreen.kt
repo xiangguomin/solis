@@ -382,14 +382,13 @@ private fun SplitBentoLayout(
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Left 54%:
-        // 1. Top Row: Clock/Date + Weather Widget (Dedicated row, NO overlap with photo!)
-        // 2. Middle/Main Area: Framed Single-Photo Card right under Time/Weather
-        // 3. Bottom Row: Photo Taken Time, Location (City, State), and Control Pills
+        // 1. Top Row: Clock/Date + Weather Widget
+        // 2. Bottom Area (weight 1f): Wider & Taller Important Gmail Brief Executive Summary!
         Column(
             modifier = Modifier
                 .weight(0.54f)
                 .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Top Row: Clock/Date on left + Wider Weather card aligned horizontally
             Row(
@@ -406,12 +405,41 @@ private fun SplitBentoLayout(
                 )
             }
 
-            // Dedicated Single-Photo Card directly under Time/Weather, expanding all the way to the
-            // bottom edge to align with the bottom of the Gmail Brief card on the right!
-            Box(
+            GmailDigestCard(
+                digestItems = state.gmailDigest,
+                statusText = state.gmailStatusText,
+                hasConsentPrompt = state.gmailConsentIntent != null,
+                onAuthorizeGmailClick = onAuthorizeGmailClick,
+                onOpenGmailAppClick = onOpenGmailAppClick,
+                onEmailClick = onEmailClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+            )
+        }
+
+        // Right 46%:
+        // 1. Top (42%): Scrollable Upcoming Schedule (Google Calendar)
+        // 2. Bottom (58%): Dedicated Single-Photo Frame aligned with the bottom of the Gmail Brief!
+        Column(
+            modifier = Modifier
+                .weight(0.46f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CalendarAgendaCard(
+                events = state.upcomingEvents,
+                onEventClick = onCalendarEventClick,
+                onCardHeaderClick = onCalendarHeaderClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.42f)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.58f)
                     .clip(RoundedCornerShape(24.dp))
                     .border(1.dp, palette.cardBorder, RoundedCornerShape(24.dp))
                     .clickable(
@@ -441,7 +469,7 @@ private fun SplitBentoLayout(
                                 )
                             )
                         )
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     BottomActionPillBar(
                         state = state,
@@ -458,34 +486,6 @@ private fun SplitBentoLayout(
                     )
                 }
             }
-        }
-
-        // Right 46%: Dedicated Full-Height Scrollable Schedule + Scrollable Gmail Brief
-        Column(
-            modifier = Modifier
-                .weight(0.46f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CalendarAgendaCard(
-                events = state.upcomingEvents,
-                onEventClick = onCalendarEventClick,
-                onCardHeaderClick = onCalendarHeaderClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.44f)
-            )
-            GmailDigestCard(
-                digestItems = state.gmailDigest,
-                statusText = state.gmailStatusText,
-                hasConsentPrompt = state.gmailConsentIntent != null,
-                onAuthorizeGmailClick = onAuthorizeGmailClick,
-                onOpenGmailAppClick = onOpenGmailAppClick,
-                onEmailClick = onEmailClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.56f)
-            )
         }
     }
 }

@@ -421,10 +421,10 @@ fun GmailDigestCard(
 ) {
     val palette = LocalSolisPalette.current
     val actionItems = remember(digestItems) {
-        digestItems.filter { it.category == DigestCategory.ACTION_REQUIRED }
+        digestItems.filter { it.category == DigestCategory.ACTION_REQUIRED }.take(4)
     }
     val attentionItems = remember(digestItems) {
-        digestItems.filter { it.category != DigestCategory.ACTION_REQUIRED }
+        digestItems.filter { it.category != DigestCategory.ACTION_REQUIRED }.take(4)
     }
 
     GlassCard(modifier = modifier) {
@@ -575,7 +575,7 @@ private fun ExecutiveSummaryBullet(
             },
             fontSize = 13.sp,
             lineHeight = 18.sp,
-            maxLines = 3,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
